@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador EFRATA CONTABILIDADE</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        :root { --primary: #1a3a5a; --secondary: #3498db; --accent: #2ecc71; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 10px; background: #f0f2f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        .header { text-align: center; border-bottom: 4px solid var(--primary); padding-bottom: 15px; margin-bottom: 20px; }
+        .logo { font-size: 24px; font-weight: bold; color: var(--primary); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .section { background: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 5px solid var(--secondary); }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; }
+        .btn-group { display: flex; gap: 10px; justify-content: center; margin: 20px 0; }
+        .btn { padding: 12px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; transition: 0.3s; }
+        .btn-calc { background: var(--primary); }
+        .btn-pdf { background: #e74c3c; }
+        .results { display: none; margin-top: 20px; }
+        .card { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 4px solid var(--primary); }
+        .line { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+        .total { font-weight: bold; color: var(--primary); border-top: 2px solid #ddd; padding-top: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="logo">EFRATA CONTABILIDADE</div>
+        <div style="font-size: 12px; color: var(--secondary);">SIMULADOR TRIBUTÁRIO PROFISSIONAL</div>
+    </div>
+
+    <div class="grid">
+        <div class="section">
+            <h3>📊 Faturamento</h3>
+            <div class="form-group"><label>Receita Mensal (R$):</label><input type="number" id="receita"></div>
+            <div class="form-group">
+                <label>Atividade:</label>
+                <select id="atividade">
+                    <option value="Comércio">Comércio</option>
+                    <option value="Serviço">Serviço</option>
+                    <option value="Indústria">Indústria</option>
+                    <option value="Mista 1 (Com+Ser+Ind)">Mista 1 (Com+Ser+Ind)</option>
+                    <option value="Mista 2 (Ind+Com)">Mista 2 (Ind+Com)</option>
+                    <option value="Mista 3 (Ind+Ser)">Mista 3 (Ind+Ser)</option>
+                    <option value="Mista 4 (Com+Ser)">Mista 4 (Com+Ser)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Regime:</label>
+                <select id="regime" onchange="document.getElementById('simplesBox').style.display=this.value=='simples'?'block':'none'">
+                    <option value="simples">Simples Nacional</option>
+                    <option value="presumido">Lucro Presumido</option>
+                </select>
+            </div>
+            <div id="simplesBox">
+                <div class="form-group">
+                    <label>Anexo Predominante:</label>
+                    <select id="anexo">
+                        <option value="1">Anexo I</option><option value="2">Anexo II</option>
+                        <option value="3">Anexo III</option><option value="4">Anexo IV</option><option value="5">Anexo V</option>
+                    </select>
+                </div>
+                <label style="display:flex; align-items:center; gap:5px; font-size:12px;"><input type="checkbox" id="fatorR"> Sujeito ao Fator R?</label>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>👥 Pessoal e Custos</h3>
+            <div class="form-group"><label>Sócios:</label><input type="number" id="socios" value="1"></div>
+            <div class="form-group"><label>Pró-Labore Sócio (R$):</label><input type="number" id="prolabore" value="1412"></div>
+            <div class="form-group"><label>Funcionários:</label><input type="number" id="funcionarios" value="0"></div>
+            <div class="form-group"><label>Salário Médio (R$):</label><input type="number" id="salario" value="0"></div>
+            <div class="form-group"><label>Honorários (R$):</label><input type="number" id="honorarios" value="0"></div>
+        </div>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn btn-calc" onclick="calcular()">CALCULAR</button>
+        <button class="btn btn-pdf" onclick="gerarPDF()">EXPORTAR PDF</button>
+    </div>
+
+    <div class="results" id="results">
+        <div class="grid">
+            <div class="card">
+                <h3>💼 Tributos</h3>
+                <div class="line"><span>Imposto Principal:</span> <span id="resImp">R$ 0,00</span></div>
+                <div class="line"><span>PIS/COFINS:</span> <span id="resPC">R$ 0,00</span></div>
+                <div class="line"><span>INSS Patronal:</span> <span id="resPat">R$ 0,00</span></div>
+                <div class="line total"><span>Total Tributos:</span> <span id="resTotalTrib">R$ 0,00</span></div>
+            </div>
+            <div class="card">
+                <h3>👥 Pessoal</h3>
+                <div class="line"><span>Pró-Labore:</span> <span id="resPro">R$ 0,00</span></div>
+                <div class="line"><span>INSS Retido (11%):</span> <span id="resRet">R$ 0,00</span></div>
+                <div class="line"><span>Salários + FGTS:</span> <span id="resFolha">R$ 0,00</span></div>
+                <div class="line"><span>Provisões:</span> <span id="resProv">R$ 0,00</span></div>
+            </div>
+            <div class="card">
+                <h3>💰 Resumo</h3>
+                <div class="line"><span>Custo Mensal:</span> <span id="resMensal">R$ 0,00</span></div>
+                <div class="line"><span>Margem Líquida:</span> <span id="resMargem">0%</span></div>
+                <div class="line total"><span>Custo Anual:</span> <span id="resAnual">R$ 0,00</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const tabs = {
+        1: [[180000, 0.04, 0], [360000, 0.073, 5940], [720000, 0.095, 13860], [1800000, 0.107, 22500], [3600000, 0.143, 87300], [4800000, 0.19, 378000]],
+        2: [[180000, 0.045, 0], [360000, 0.078, 5940], [720000, 0.10, 13860], [1800000, 0.112, 22500], [3600000, 0.147, 85500], [4800000, 0.30, 720000]],
+        3: [[180000, 0.06, 0], [360000, 0.112, 9360], [720000, 0.135, 17640], [1800000, 0.16, 35640], [3600000, 0.21, 125640], [4800000, 0.33, 648000]],
+        4: [[180000, 0.045, 0], [360000, 0.09, 8100], [720000, 0.102, 12420], [1800000, 0.14, 39780], [3600000, 0.22, 183780], [4800000, 0.33, 579780]],
+        5: [[180000, 0.155, 0], [360000, 0.18, 4500], [720000, 0.195, 9900], [1800000, 0.205, 17100], [3600000, 0.23, 62100], [4800000, 0.305, 540000]]
+    };
+
+    function f(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+
+    function calcular() {
+        const r = parseFloat(document.getElementById('receita').value) || 0;
+        const reg = document.getElementById('regime').value;
+        const s = parseInt(document.getElementById('socios').value) || 0;
+        const p = parseFloat(document.getElementById('prolabore').value) || 0;
+        const n = parseInt(document.getElementById('funcionarios').value) || 0;
+        const sal = parseFloat(document.getElementById('salario').value) || 0;
+        const h = parseFloat(document.getElementById('honorarios').value) || 0;
+
+        const folha = (s * p) + (n * sal);
+        let imp = 0, pc = 0, pat = 0;
+
+        if (reg === 'simples') {
+            let anx = parseInt(document.getElementById('anexo').value);
+            if (document.getElementById('fatorR').checked) anx = (folha / r >= 0.28) ? 3 : 5;
+            const r12 = r * 12;
+            const fx = tabs[anx].find(f => r12 <= f[0]) || tabs[anx][5];
+            imp = r * (((r12 * fx[1]) - fx[2]) / r12);
+            if (anx === 4) pat = (n * sal) * 0.20;
+        } else {
+            const pr = (document.getElementById('atividade').value.includes('Serviço')) ? 0.32 : 0.08;
+            imp = (r * pr * 0.15) + (r * pr * 0.09);
+            pc = r * 0.0365;
+            pat = (n * sal) * 0.20;
+        }
+
+        const fgts = (n * sal) * 0.08;
+        const prov = (n * sal) * (0.0833 + 0.1111 + 0.032); // 13, Férias, Multa 40%
+        const totalM = imp + pc + pat + (s * p) + (n * sal) + fgts + prov + h;
+
+        document.getElementById('resImp').innerText = f(imp);
+        document.getElementById('resPC').innerText = f(pc);
+        document.getElementById('resPat').innerText = f(pat);
+        document.getElementById('resTotalTrib').innerText = f(imp + pc + pat);
+        document.getElementById('resPro').innerText = f(s * p);
+        document.getElementById('resRet').innerText = f((s * p) * 0.11);
+        document.getElementById('resFolha').innerText = f((n * sal) + fgts);
+        document.getElementById('resProv').innerText = f(prov);
+        document.getElementById('resMensal').innerText = f(totalM);
+        document.getElementById('resMargem').innerText = r > 0 ? ((r - totalM) / r * 100).toFixed(2) + "%" : "0%";
+        document.getElementById('resAnual').innerText = f(totalM * 12);
+        document.getElementById('results').style.display = 'block';
+    }
+
+    function gerarPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFillColor(26, 58, 90); doc.rect(0, 0, 210, 30, 'F');
+        doc.setTextColor(255); doc.setFontSize(18); doc.text("EFRATA CONTABILIDADE", 105, 15, { align: "center" });
+        doc.setFontSize(10); doc.text("RELATÓRIO DE SIMULAÇÃO TRIBUTÁRIA", 105, 22, { align: "center" });
+        
+        doc.setTextColor(0); doc.setFontSize(12); doc.text("DADOS DE ENTRADA:", 14, 40);
+        const ent = [
+            ["Receita Mensal", f(parseFloat(document.getElementById('receita').value || 0))],
+            ["Atividade", document.getElementById('atividade').value],
+            ["Regime", document.getElementById('regime').value.toUpperCase()],
+            ["Sócios / Pró-labore", document.getElementById('socios').value + " / " + f(parseFloat(document.getElementById('prolabore').value || 0))],
+            ["Funcionários / Salário", document.getElementById('funcionarios').value + " / " + f(parseFloat(document.getElementById('salario').value || 0))]
+        ];
+        doc.autoTable({ startY: 45, body: ent, theme: 'grid' });
+
+        doc.text("RESULTADOS MENSAIS:", 14, doc.lastAutoTable.finalY + 10);
+        const res = [
+            ["Impostos (DAS/IRPJ/CSLL)", document.getElementById('resImp').innerText],
+            ["PIS/COFINS", document.getElementById('resPC').innerText],
+            ["INSS Patronal", document.getElementById('resPat').innerText],
+            ["Pró-labore (Bruto)", document.getElementById('resPro').innerText],
+            ["Folha + FGTS", document.getElementById('resFolha').innerText],
+            ["Provisões (Férias/13/Multa)", document.getElementById('resProv').innerText],
+            ["TOTAL MENSAL", document.getElementById('resMensal').innerText],
+            ["MARGEM LÍQUIDA", document.getElementById('resMargem').innerText]
+        ];
+        doc.autoTable({ startY: doc.lastAutoTable.finalY + 15, body: res, theme: 'striped' });
+        doc.save("Simulacao_Efrata.pdf");
+    }
+</script>
+</body>
+</html>
